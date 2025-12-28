@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Recursive Resonance – Fractal Engine Test</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <style>
+    html, body {
+      margin: 0;
+      background: black;
+      color: #aaa;
+      font-family: system-ui, sans-serif;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    canvas {
+      display: block;
+      margin: auto;
+      image-rendering: pixelated;
+    }
+
+    .label {
+      position: fixed;
+      bottom: 12px;
+      left: 12px;
+      font-size: 12px;
+      opacity: 0.6;
+    }
+  </style>
+</head>
+<body>
+
+  <canvas></canvas>
+  <div class="label">Recursive Resonance — Fractal Engine Test</div>
+
+  <!-- IMPORTANT: type="module" -->
+  <script type="module" src="./main.js"></script>
+
+</body>
+</html>
