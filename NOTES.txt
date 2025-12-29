@@ -1,0 +1,38 @@
+🌳 Recursive visuals matching sound
+
+🎛️ Order ↔ Chaos control (recursion depth & probability)
+
+🎥 Narrative film mode (recursion crescendo → silence)
+
+🎹 Scale quantization (make recursion tonal)
+
+🎼 Add recursion to sound (notes spawning notes)
+
+🎛️ Single “Order ↔ Chaos” slider (installation mode)
+
+🎥 Film mode (scripted fractal + sound path)
+
+🔊 Audio-reactive visuals (FFT loop)
+
+🌊 Spatial depth (reverb + stereo movement)
+
+🎵 Add a second oscillator (fifth / octave)
+
+🔁 Recursive envelopes (Project 3)
+
+🔊 FFT feedback loop (Project 2)
+
+🎥 Parameter path playback (Project 5)
+
+🎛️ Single “Order ↔ Chaos” slider (Project 7)
+
+
+GPU/WebGL version (10–50× faster)
+
+Audio-driven color & zoom
+
+Orbit-trap shading (very dramatic)
+
+Temporal accumulation (ultra-smooth glow)
+
+AUDIO IS NOT LINKED TO FRACTALS

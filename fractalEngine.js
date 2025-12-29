@@ -9,7 +9,9 @@ export class FractalEngine {
   } = {}) {
     this.width = width;
     this.height = height;
-    this.maxIter = maxIter;
+    //this.maxIter = maxIter;
+    this.maxIter = Math.floor(200 + 80 * Math.log2(3 / this.scale));
+
 
     this.centerX = centerX;
     this.centerY = centerY;
@@ -31,7 +33,12 @@ export class FractalEngine {
       iter++;
     }
 
-    return iter;
+    if (iter === this.maxIter) return iter;
+
+    // smooth iteration count
+    const logZn = Math.log(x*x + y*y) / 2;
+    const nu = Math.log(logZn / Math.log(2)) / Math.log(2);
+    return iter + 1 - nu;
   }
 
   // Generate full field
@@ -55,12 +62,22 @@ export class FractalEngine {
 
   // Time evolution
   step(t) {
-    this.scale = 3 * Math.exp(-t * 0.02);
-    this.centerX = -0.5 + Math.sin(t * 0.1) * 0.2;
-    this.centerY = Math.cos(t * 0.07) * 0.2;
+  const baseScale = 2.5;
+  const zoom = 0.75 + 0.25 * Math.sin(t * 0.15);
+  this.scale = baseScale * zoom;
 
-    this.generate();
-  }
+  this.maxIter = Math.min(
+  420,
+  Math.floor(200 + 90 * Math.log2(3 / this.scale))
+  );
+
+
+  this.centerX = -0.5 + Math.sin(t * 0.17) * 0.25;
+  this.centerY = Math.cos(t * 0.13) * 0.18;
+
+  this.generate();
+}
+
 
   getField() {
     return this.field;
