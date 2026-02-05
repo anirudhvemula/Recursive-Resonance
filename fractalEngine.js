@@ -12,6 +12,13 @@ export class FractalEngine {
     //this.maxIter = maxIter;
     this.maxIter = Math.floor(200 + 80 * Math.log2(3 / this.scale));
 
+    this.juliaCX = -0.7;
+    this.juliaCY = 0.27015;
+
+    this.type = "mandelbrot";
+
+
+
 
     this.centerX = centerX;
     this.centerY = centerY;
@@ -41,6 +48,47 @@ export class FractalEngine {
     return iter + 1 - nu;
   }
 
+  julia(x, y) {
+  let iter = 0;
+  while (x*x + y*y <= 4 && iter < this.maxIter) {
+    const xt = x*x - y*y + this.juliaCX;
+    y = 2*x*y + this.juliaCY;
+    x = xt;
+    iter++;
+  }
+  return iter;
+  }
+
+  burningShip(cx, cy) {
+  let x = 0;
+  let y = 0;
+  let iter = 0;
+
+  while (x * x + y * y <= 4 && iter < this.maxIter) {
+    const xt = x * x - y * y + cx;
+    y = Math.abs(2 * x * y) + cy;
+    x = Math.abs(xt);
+    iter++;
+  }
+
+  return iter;
+  }
+
+
+  iterate(cx, cy) {
+  switch (this.type) {
+    case "julia":
+      return this.julia(cx, cy);
+    case "burningship":
+      return this.burningShip(cx, cy);
+    default:
+      return this.mandelbrot(cx, cy);
+  }
+  }
+
+
+
+
   // Generate full field
   generate() {
     let i = 0;
@@ -55,7 +103,8 @@ export class FractalEngine {
           this.centerY +
           (y / this.height - 0.5) * this.scale;
 
-        this.field[i++] = this.mandelbrot(cx, cy);
+        this.field[i++] = this.iterate(cx, cy);
+
       }
     }
   }
@@ -74,6 +123,10 @@ export class FractalEngine {
 
   this.centerX = -0.5 + Math.sin(t * 0.17) * 0.25;
   this.centerY = Math.cos(t * 0.13) * 0.18;
+
+  this.juliaCX = -0.7 + Math.sin(t * 0.3) * 0.2;
+  this.juliaCY =  0.27 + Math.cos(t * 0.21) * 0.2;
+
 
   this.generate();
 }

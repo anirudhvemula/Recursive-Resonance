@@ -1,5 +1,17 @@
 const canvas = document.getElementById("glcanvas");
 const gl = canvas.getContext("webgl");
+let fractalType = 0;
+let juliaCX = -0.7;
+let juliaCY = 0.27;
+
+export function setFractalType(type) {
+  fractalType = type;
+}
+
+export function setJuliaParams(cx, cy) {
+  juliaCX = cx;
+  juliaCY = cy;
+}
 
 let audioEnergy = 0;
 let audioPeak = 0;
@@ -38,6 +50,10 @@ uniform float u_time;
 uniform float u_scale;
 uniform vec2 u_center;
 
+uniform int u_fractalType;   // 0 = Mandelbrot, 1 = Julia, 2=Burning Ship
+uniform vec2 u_juliaC;
+
+
 uniform float u_audioEnergy;
 uniform float u_audioPeak;
 
@@ -49,19 +65,51 @@ vec3 hsv2rgb(vec3 c) {
 
 void main() {
   vec2 uv = (gl_FragCoord.xy - 0.5 * u_resolution) / u_resolution.y;
-  vec2 c = u_center + uv * u_scale;
+  
+  vec2 pixel = u_center + uv * u_scale;
 
-  vec2 z = vec2(0.0);
+  vec2 z;
+  vec2 c;
+
+  if (u_fractalType == 0 || u_fractalType == 2) {
+  // Mandelbrot & Burning Ship
+  z = vec2(0.0);
+  c = pixel;
+  } else {
+  // Julia
+  z = pixel;
+  c = u_juliaC;
+  }
+
+
   float iter = 0.0;
+
+  
   const float MAX_ITER = 300.0;
 
   for (float i = 0.0; i < MAX_ITER; i++) {
-    z = vec2(
-      z.x * z.x - z.y * z.y,
-      2.0 * z.x * z.y
-    ) + c;
+    if (u_fractalType == 2) {
+        // Burning Ship
+        z = vec2(
+          z.x * z.x - z.y * z.y,
+          abs(2.0 * z.x * z.y)
+        ) + c;
+        z = abs(z);
+      } else {
+        // Mandelbrot / Julia
+        z = vec2(
+          z.x * z.x - z.y * z.y,
+          2.0 * z.x * z.y
+        ) + c;
+      }
 
-    if (dot(z, z) > 4.0) {
+
+    float escape =
+      (u_fractalType == 2)
+        ? 4.0 + u_audioEnergy * 6.0   // Burning Ship: hull bends
+        : 4.0;                        // Others unchanged
+
+    if (dot(z, z) > escape) {
       iter = i;
       break;
     }
@@ -79,17 +127,40 @@ void main() {
     float smoothIter = iter + 1.0 - nu;
 
     float norm = smoothIter / MAX_ITER;
+    if (u_fractalType == 1) {
+    // Julia only: calm the boundary shimmer
+    norm = smoothstep(0.0, 1.0, norm);
+    }
+
+    if (u_fractalType == 2) {
+    norm = pow(norm, 1.2);
+    }
+
 
 
   float angle = atan(uv.y, uv.x);
   
+  float timeHue =
+  (u_fractalType == 1) ? u_time * 8.0 :
+  (u_fractalType == 2) ? u_time * 6.0 :
+                         u_time * 20.0;
+
+
+
+  float audioHue =
+    (u_fractalType == 2)
+      ? 0.0                      // Burning Ship: NO audio color
+      : u_audioEnergy * 120.0;   // Others unchanged
+
   float hue = mod(
-  norm * 360.0 +
-  angle * 40.0 +
-  u_time * 20.0 +
-  u_audioEnergy * 120.0,
-  360.0
-) / 360.0;
+    norm * 360.0 +
+    angle * 40.0 +
+    timeHue +
+    audioHue,
+    360.0
+  ) / 360.0;
+
+
 
 
   float brightness = clamp(
@@ -161,6 +232,9 @@ const uTime       = gl.getUniformLocation(program, "u_time");
 const uScale      = gl.getUniformLocation(program, "u_scale");
 const uCenter     = gl.getUniformLocation(program, "u_center");
 
+const uFractalType = gl.getUniformLocation(program, "u_fractalType");
+const uJuliaC      = gl.getUniformLocation(program, "u_juliaC");
+
 
 const uAudioEnergy = gl.getUniformLocation(program, "u_audioEnergy");
 const uAudioPeak   = gl.getUniformLocation(program, "u_audioPeak");
@@ -189,6 +263,10 @@ function render(now) {
   gl.uniform1f(uAudioEnergy, audioEnergy);
   gl.uniform1f(uAudioPeak, audioPeak);
 
+  gl.uniform1i(uFractalType, fractalType);
+  gl.uniform2f(uJuliaC, juliaCX, juliaCY);
+
+
 
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   requestAnimationFrame(render);
@@ -200,3 +278,6 @@ export function setAudioMetrics(energy, peak) {
   audioEnergy = energy;
   audioPeak = peak;
 }
+
+
+

@@ -1,85 +1,1008 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Recursive Resonance</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recursive Resonance v2.1</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@300;400;700&family=Share+Tech+Mono&display=swap');
 
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  <style>
-    html, body {
-      margin: 0;
-      background: black;
-      color: #aaa;
-      font-family: system-ui, sans-serif;
-      height: 100%;
-      overflow: hidden;
-    }
-
-    canvas {
-      display: block;
-      margin: auto;
-      image-rendering: pixelated;
-    }
-
-    .label {
-      position: fixed;
-      bottom: 12px;
-      left: 12px;
-      font-size: 12px;
-      opacity: 0.6;
-    }
-
-    #startBtn {
-    position: fixed;
-    z-index: 10;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 12px 20px;
-    background: rgba(0, 0, 0, 0.6);
-    color: #9feaff;
-    border: 1px solid #2aa;
-    border-radius: 4px;
-    font-size: 14px;
-    cursor: pointer;
-    }
-
-  #startBtn:hover {
-    background: rgba(0, 0, 0, 0.8);
-    }
-
-    canvas {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  body {
+    background: #000;
+    overflow: hidden;
+    font-family: 'Share Tech Mono', monospace;
+    color: #e0dff5;
+    height: 100vh; width: 100vw;
+    user-select: none;
   }
 
-  #glcanvas {
-    z-index: 0;
+  #glcanvas, #overlay, #treeCanvas {
+    position: fixed; top: 0; left: 0;
+    width: 100%; height: 100%;
+    display: block;
+  }
+  #glcanvas   { z-index: 0; }
+  #overlay    { z-index: 1; pointer-events: none; }
+  #treeCanvas { z-index: 0; display: none; }
+
+  :root {
+    --ui-bg: rgba(8, 8, 14, 0.82);
+    --ui-border: rgba(120, 80, 220, 0.30);
+    --ui-accent: #7c4dff;
+    --ui-accent2: #ff4081;
+    --ui-text: #e0dff5;
+    --ui-dim: #6b6a8a;
+    --blur: 16px;
   }
 
-  #overlay {
-    z-index: 1;
-    pointer-events: none;
+  .top-bar {
+    position: fixed; top: 0; left: 0; right: 0; height: 54px;
+    background: var(--ui-bg);
+    backdrop-filter: blur(var(--blur));
+    -webkit-backdrop-filter: blur(var(--blur));
+    border-bottom: 1px solid var(--ui-border);
+    display: flex; align-items: center; gap: 16px;
+    padding: 0 18px;
+    z-index: 100;
+  }
+  .logo {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700; font-size: 12px;
+    letter-spacing: 3px; text-transform: uppercase;
+    background: linear-gradient(135deg, var(--ui-accent), var(--ui-accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    white-space: nowrap; flex-shrink: 0;
   }
 
+  .top-bar select {
+    background: rgba(24,22,42,0.92);
+    border: 1px solid var(--ui-border);
+    color: var(--ui-text);
+    font-family: inherit; font-size: 12px;
+    padding: 5px 26px 5px 9px;
+    border-radius: 6px; cursor: pointer;
+    appearance: none; -webkit-appearance: none; outline: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236b6a8a'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 9px center;
+    transition: border-color .2s;
+  }
+  .top-bar select:hover { border-color: var(--ui-accent); }
+  .top-bar select option { background: #1a1828; }
 
-  </style>
+  .pill-group { display: flex; gap: 3px; }
+  .pill {
+    background: rgba(24,22,42,0.88);
+    border: 1px solid var(--ui-border);
+    color: var(--ui-dim);
+    font-family: inherit; font-size: 10.5px;
+    padding: 4px 11px; border-radius: 18px;
+    cursor: pointer; transition: all .18s; letter-spacing: .4px;
+  }
+  .pill:hover { border-color: var(--ui-accent); color: var(--ui-text); }
+  .pill.active {
+    background: linear-gradient(135deg, rgba(124,77,255,.3), rgba(255,64,129,.2));
+    border-color: var(--ui-accent); color: #fff;
+  }
+
+  .palette-strip { display: flex; gap: 6px; align-items: center; margin-left: auto; }
+  .swatch {
+    width: 22px; height: 22px; border-radius: 50%;
+    border: 2px solid transparent; cursor: pointer;
+    transition: transform .14s, border-color .2s;
+  }
+  .swatch:hover { transform: scale(1.2); }
+  .swatch.active { border-color: #fff; }
+  /* Only 3 distinct palettes now */
+  .swatch[data-p="cyber"]  { background: linear-gradient(135deg, #0ff, #7c4dff); }
+  .swatch[data-p="fire"]   { background: linear-gradient(135deg, #ff1744, #ff9800, #ffeb3b); }
+  .swatch[data-p="mono"]   { background: linear-gradient(135deg, #222, #aaa, #fff); }
+
+  .bottom-bar {
+    position: fixed; bottom: 0; left: 0; right: 0; height: 66px;
+    background: var(--ui-bg);
+    backdrop-filter: blur(var(--blur));
+    -webkit-backdrop-filter: blur(var(--blur));
+    border-top: 1px solid var(--ui-border);
+    display: flex; align-items: center; gap: 12px;
+    padding: 0 16px;
+    z-index: 100;
+  }
+  #spectrumCanvas {
+    flex: 1; height: 38px; border-radius: 6px;
+    background: rgba(18,16,32,.6);
+  }
+  .btn {
+    width: 36px; height: 36px; border-radius: 7px;
+    border: 1px solid var(--ui-border);
+    background: rgba(24,22,42,.88);
+    color: var(--ui-dim);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 15px; transition: all .2s;
+    flex-shrink: 0;
+  }
+  .btn:hover { border-color: var(--ui-accent); color: #fff; background: rgba(124,77,255,.16); }
+  .btn.active { border-color: var(--ui-accent2); color: var(--ui-accent2); background: rgba(255,64,129,.15); }
+
+  .hint {
+    position: fixed; left: 50%; transform: translateX(-50%);
+    background: var(--ui-bg); backdrop-filter: blur(12px);
+    border: 1px solid var(--ui-border);
+    padding: 5px 15px; border-radius: 18px;
+    font-size: 10.5px; color: var(--ui-dim);
+    z-index: 90; pointer-events: none;
+    opacity: 0; transition: opacity .35s;
+  }
+  .hint.show { opacity: 1; }
+  #hintJulia  { bottom: 80px; }
+  #hintLsys   { bottom: 100px; }
+
+  .stats {
+    position: fixed; top: 62px; right: 12px;
+    font-size: 9.5px; color: var(--ui-dim);
+    line-height: 1.8; text-align: right;
+    z-index: 90; pointer-events: none; opacity: .7;
+  }
+</style>
 </head>
 <body>
 
-  <button id="startBtn">Start Jamming! 🔊</button>
-  <canvas id="glcanvas"></canvas>
-  <script type="module" src="webglFractal.js"></script>
-  <canvas id="overlay"></canvas>
+<div class="top-bar">
+  <div class="logo">◇ Recursive Resonance</div>
 
-  <div class="label">Recursive Resonance — Fractal Engine</div>
+  <select id="fractalSelect">
+    <option value="mandelbrot">Mandelbrot</option>
+    <option value="julia">Julia Set</option>
+    <option value="tricorn">Tricorn</option>
+    <option value="tree">Recursive Tree</option>
+    <option value="lsystem">L-System</option>
+  </select>
 
-  <!-- IMPORTANT: type="module" -->
-  <script type="module" src="./main.js"></script>
+  <div class="pill-group">
+    <button class="pill active" data-mode="classic">Classic</button>
+    <button class="pill" data-mode="inverse">Inverse</button>
+    <button class="pill" data-mode="glow">Glow</button>
+  </div>
 
+  <div class="palette-strip">
+    <div class="swatch active" data-p="cyber"></div>
+    <div class="swatch" data-p="fire"></div>
+    <div class="swatch" data-p="mono"></div>
+  </div>
+</div>
+
+<canvas id="glcanvas"></canvas>
+<canvas id="overlay"></canvas>
+<canvas id="treeCanvas"></canvas>
+
+<div class="hint" id="hintJulia">🖱 Move mouse to control Julia parameter</div>
+<div class="hint" id="hintLsys">🖱 Move mouse horizontally to control growth</div>
+
+<div class="stats" id="stats"></div>
+
+<div class="bottom-bar">
+  <button class="btn" id="btnJam" title="Start/mute generative audio">🔊</button>
+  <canvas id="spectrumCanvas"></canvas>
+  <button class="btn" id="btnUpload" title="Overlay audio file (optional)">♫</button>
+  <button class="btn active" id="btnReactive" title="Toggle audio reactivity">⟳</button>
+  <button class="btn" id="btnFullscreen" title="Fullscreen">⛲</button>
+  <button class="btn" id="btnCapture" title="Screenshot">📷</button>
+  <input type="file" id="fileInput" accept="audio/*" style="display:none">
+</div>
+
+<script>
+(function () {
+'use strict';
+
+const S = {
+  fractal    : 'mandelbrot',
+  renderMode : 'classic',
+  palette    : 'cyber',
+  reactive   : true,      // NEW: when false, audio has NO effect on visuals
+
+  audioCtx   : null,
+  analyser   : null,
+  dataArray  : null,
+  baseOsc    : null,
+  filter     : null,
+  baseGain   : null,
+  genEnabled : false,
+  lastSpawn  : 0,
+  fileSource : null,
+  fileBuffer : null,
+
+  energy : 0, peak : 0,
+  bass   : 0, mid  : 0, high : 0,
+
+  fieldW : 120, fieldH : 80,
+  field  : null,
+  juliaCX: -0.7, juliaCY: 0.27015,
+  juliaMouseOverride: false,  // NEW: track if mouse has taken control
+
+  userZoom : 1, userPanX : 0, userPanY : 0,
+
+  lsysRule : 0,
+  lsysStepOverride: -1,  // NEW: -1 = animate, >=0 = mouse control
+
+  startTime : performance.now(),
+  fps : 60, lastT : 0,
+};
+S.field = new Float32Array(S.fieldW * S.fieldH);
+
+// Only 3 distinct palettes
+const PAL = {
+  cyber : { h1: 200, h2: 280, sat: 0.88, lit: 0.58 },
+  fire  : { h1:   0, h2:  50, sat: 0.95, lit: 0.52 },
+  mono  : { h1:   0, h2:   0, sat: 0.00, lit: 0.50 },
+};
+
+const LSYS = [
+  { name:'Dragon',     axiom:'FX', rules:{ X:'X+YF+', Y:'-FX-Y' }, angle: Math.PI/4, maxSteps:13, lenDiv:3 },
+  { name:'Koch',       axiom:'F',  rules:{ F:'F+F--F+F' },         angle: Math.PI/3, maxSteps:6,  lenDiv:3 },
+  { name:'Sierpinski', axiom:'F--F--F', rules:{ F:'F+F--F+F' },    angle: Math.PI/3, maxSteps:7,  lenDiv:3 },
+  { name:'Hilbert',    axiom:'A',  rules:{ A:'-BF+AFA+FB-', B:'+AF-BFB-FA+' }, angle: Math.PI/2, maxSteps:8, lenDiv:4 },
+];
+
+// ═══════════════════════════════════════════════════════════════
+// WebGL
+// ═══════════════════════════════════════════════════════════════
+const glCanvas = document.getElementById('glcanvas');
+const gl = glCanvas.getContext('webgl', { antialias: true, alpha: false, preserveDrawingBuffer: true });
+if (!gl) { document.body.innerHTML='<h2 style="color:#f55;padding:2rem">WebGL unavailable</h2>'; throw 'WebGL'; }
+
+function resizeGL() {
+  const dpr = window.devicePixelRatio || 1;
+  glCanvas.width  = window.innerWidth  * dpr;
+  glCanvas.height = window.innerHeight * dpr;
+  glCanvas.style.width  = window.innerWidth  + 'px';
+  glCanvas.style.height = window.innerHeight + 'px';
+  gl.viewport(0, 0, glCanvas.width, glCanvas.height);
+}
+window.addEventListener('resize', resizeGL);
+resizeGL();
+
+const VS = `
+attribute vec2 a_pos;
+void main() { gl_Position = vec4(a_pos, 0.0, 1.0); }
+`;
+
+// FIXED INVERSE MODE: escaped pixels must also check mode and output black if inverse
+const FS = `precision highp float;
+
+uniform vec2  u_resolution;
+uniform float u_time;
+uniform float u_scale;
+uniform vec2  u_center;
+
+uniform int   u_type;
+uniform vec2  u_juliaC;
+uniform float u_energy;
+uniform float u_peak;
+
+uniform int   u_mode;
+uniform float u_h1, u_h2, u_sat, u_lit;
+
+vec3 hsv2rgb(vec3 c) {
+  vec4 K = vec4(1.0, 2.0/3.0, 1.0/3.0, 3.0);
+  vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+  return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+}
+
+void main() {
+  vec2 uv    = (gl_FragCoord.xy - 0.5*u_resolution) / u_resolution.y;
+  vec2 pixel = u_center + uv * u_scale;
+
+  vec2 z, c;
+  if (u_type == 1) { z = pixel; c = u_juliaC; }
+  else             { z = vec2(0.0); c = pixel; }
+
+  const float MAX_ITER = 300.0;
+  float iter = 0.0;
+  bool escaped = false;
+
+  for (float i = 0.0; i < MAX_ITER; i++) {
+    if (u_type == 3) {
+      // Tricorn
+      z = vec2(z.x*z.x - z.y*z.y, -2.0*z.x*z.y) + c;
+    } else {
+      // Mandelbrot / Julia
+      z = vec2(z.x*z.x - z.y*z.y,  2.0*z.x*z.y) + c;
+    }
+
+    if (dot(z, z) > 4.0) { iter = i; escaped = true; break; }
+  }
+
+  // ── INTERIOR (not escaped) ──
+  if (!escaped) {
+    if (u_mode == 1) {
+      // INVERSE: color the interior
+      float intT = sin(iter*0.5 + u_time*0.8)*0.5 + 0.5;
+      float hue  = mod(u_h1 + (u_h2-u_h1)*intT + u_time*12.0, 360.0)/360.0;
+      vec3  col  = hsv2rgb(vec3(hue, u_sat, u_lit));
+      gl_FragColor = vec4(pow(col, vec3(1.2)), 1.0);
+    } else {
+      // classic/glow: black interior
+      gl_FragColor = vec4(0.02, 0.02, 0.03, 1.0);
+    }
+    return;
+  }
+
+  // ── EXTERIOR (escaped) ──
+  // FIXED: inverse mode must render exterior as black
+  if (u_mode == 1) {
+    gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+    return;
+  }
+
+  // classic / glow: color the exterior
+  float log_zn = log(dot(z,z))/2.0;
+  float nu     = log(log_zn/log(2.0))/log(2.0);
+  float smooth = iter + 1.0 - nu;
+  float norm   = smooth / MAX_ITER;
+  if (u_type == 1) norm = smoothstep(0.0, 1.0, norm);
+
+  float angle   = atan(uv.y, uv.x);
+  float timeHue = (u_type==1) ? u_time*8.0 : u_time*20.0;
+  float audioHue = u_energy * 120.0;
+  float hue = mod(norm*360.0 + angle*40.0 + timeHue + audioHue, 360.0)/360.0;
+
+  float brightness = clamp(u_lit - u_peak*0.2, 0.35, 0.88);
+  vec3 color;
+
+  if (u_mode == 2) {
+    // GLOW
+    float glow = exp(-smooth*0.06)*(0.7 + u_energy*0.5);
+    glow += exp(-smooth*0.004)*0.08;
+    color = hsv2rgb(vec3(hue, 1.0, 0.55)) * glow;
+  } else {
+    // CLASSIC
+    color = hsv2rgb(vec3(hue, u_sat, brightness));
+  }
+
+  gl_FragColor = vec4(pow(color, vec3(1.2)), 1.0);
+}
+`;
+
+function compileShader(src, type) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src);
+  gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+    console.error('Shader error:', gl.getShaderInfoLog(s));
+    return null;
+  }
+  return s;
+}
+
+const vs = compileShader(VS, gl.VERTEX_SHADER);
+const fs = compileShader(FS, gl.FRAGMENT_SHADER);
+const prog = gl.createProgram();
+gl.attachShader(prog, vs);
+gl.attachShader(prog, fs);
+gl.linkProgram(prog);
+if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+  console.error('Link error:', gl.getProgramInfoLog(prog));
+}
+gl.useProgram(prog);
+
+const quadBuf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+const aPos = gl.getAttribLocation(prog, 'a_pos');
+gl.enableVertexAttribArray(aPos);
+gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+const U = {};
+['u_resolution','u_time','u_scale','u_center','u_type','u_juliaC',
+ 'u_energy','u_peak','u_mode','u_h1','u_h2','u_sat','u_lit'
+].forEach(n => U[n] = gl.getUniformLocation(prog, n));
+
+// ═══════════════════════════════════════════════════════════════
+// Overlay (wave rings)
+// ═══════════════════════════════════════════════════════════════
+const overlay = document.getElementById('overlay');
+const overlayCtx = overlay.getContext('2d');
+const waves = [];
+
+function resizeOverlay() { overlay.width = window.innerWidth; overlay.height = window.innerHeight; }
+window.addEventListener('resize', resizeOverlay);
+resizeOverlay();
+
+function spawnWave(depth) {
+  waves.push({ x: 0.3+Math.random()*0.4, y: 0.3+Math.random()*0.4, radius: 0, life: 1, depth });
+}
+
+function drawOverlay() {
+  overlayCtx.save();
+  overlayCtx.globalCompositeOperation = 'destination-out';
+  overlayCtx.fillStyle = 'rgba(0,0,0,0.15)';
+  overlayCtx.fillRect(0,0,overlay.width,overlay.height);
+  overlayCtx.restore();
+
+  const sc = Math.min(overlay.width, overlay.height);
+  for (let i=waves.length-1; i>=0; i--) {
+    const w = waves[i];
+    w.radius += sc*(0.003 + w.depth*0.001);
+    w.life -= 0.006;
+    if (w.life<=0) { waves.splice(i,1); continue; }
+    overlayCtx.beginPath();
+    overlayCtx.arc(w.x*overlay.width, w.y*overlay.height, w.radius, 0, Math.PI*2);
+    overlayCtx.strokeStyle = `rgba(120,220,255,${w.life*0.6})`;
+    overlayCtx.lineWidth = sc*Math.max(0.0004, 0.002 - w.depth*0.0006);
+    overlayCtx.stroke();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Tree / L-System canvas
+// ═══════════════════════════════════════════════════════════════
+const treeCanvas = document.getElementById('treeCanvas');
+const treeCtx = treeCanvas.getContext('2d');
+
+function resizeTree() {
+  const dpr = window.devicePixelRatio || 1;
+  treeCanvas.width  = window.innerWidth  * dpr;
+  treeCanvas.height = window.innerHeight * dpr;
+  treeCanvas.style.width  = window.innerWidth  + 'px';
+  treeCanvas.style.height = window.innerHeight + 'px';
+}
+window.addEventListener('resize', resizeTree);
+resizeTree();
+
+function drawTreeFrame() {
+  const dpr = window.devicePixelRatio || 1;
+  const W = window.innerWidth, H = window.innerHeight;
+  treeCtx.clearRect(0,0,treeCanvas.width,treeCanvas.height);
+  treeCtx.fillStyle = '#000';
+  treeCtx.fillRect(0,0,treeCanvas.width,treeCanvas.height);
+  treeCtx.save();
+  treeCtx.scale(dpr, dpr);
+  const p = PAL[S.palette];
+  if (S.fractal==='tree') drawRecTree(treeCtx, W, H, p);
+  else                    drawLSystem(treeCtx, W, H, p);
+  treeCtx.restore();
+}
+
+function drawRecTree(ctx, W, H, p) {
+  const maxD = Math.min(13, 7 + Math.floor(S.energy*6));
+  const startLen = H*0.18*(1 + S.energy*0.3);
+  const spread = 0.42 + S.mid*0.2;
+
+  function branch(x,y,ang,len,d) {
+    if (d<=0 || len<1.5) return;
+    const x2=x+Math.cos(ang)*len, y2=y+Math.sin(ang)*len;
+    const t=1-d/maxD;
+    const hue = p.h1+(p.h2-p.h1)*t + S.mid*40;
+    const lit = p.lit + S.high*0.15*t;
+    ctx.strokeStyle = `hsl(${hue},${p.sat*100}%,${lit*100}%)`;
+    ctx.lineWidth = Math.max(0.8, d*1.6);
+    ctx.lineCap = 'round';
+    if (S.renderMode==='glow') {
+      ctx.shadowColor=`hsl(${hue},100%,60%)`;
+      ctx.shadowBlur=6+S.energy*14;
+    } else { ctx.shadowBlur=0; }
+    ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x2,y2); ctx.stroke();
+    const j=S.high*0.12;
+    branch(x2,y2, ang-spread-j, len*0.72, d-1);
+    branch(x2,y2, ang+spread+j, len*0.72, d-1);
+  }
+  branch(W*0.5, H*0.88, -Math.PI/2, startLen, maxD);
+}
+
+function drawLSystem(ctx, W, H, p) {
+  const sys = LSYS[S.lsysRule];
+  // NEW: use mouse X or time to control steps
+  let steps;
+  if (S.lsysStepOverride >= 0) {
+    steps = S.lsysStepOverride;
+  } else {
+    // animate: oscillate between 2 and maxSteps over time
+    const t = (performance.now() - S.startTime) / 1000;
+    const cycle = Math.sin(t * 0.3) * 0.5 + 0.5;  // 0→1
+    steps = Math.floor(2 + cycle * (sys.maxSteps - 2));
+  }
+
+  let str = sys.axiom;
+  for (let i=0; i<steps; i++) {
+    let next='';
+    for (const ch of str) next += (sys.rules[ch]!==undefined) ? sys.rules[ch] : ch;
+    str = next;
+    if (str.length>250000) break;
+  }
+
+  // bounding box
+  let tx=0,ty=0,ta=-Math.PI*0.5;
+  let minX=0,maxX=0,minY=0,maxY=0;
+  const segLen = (W*0.4)/Math.pow(sys.lenDiv, steps);
+  for (const ch of str) {
+    if (ch==='F') { tx+=Math.cos(ta)*segLen; ty+=Math.sin(ta)*segLen; minX=Math.min(minX,tx); maxX=Math.max(maxX,tx); minY=Math.min(minY,ty); maxY=Math.max(maxY,ty); }
+    else if (ch==='+') ta-=sys.angle;
+    else if (ch==='-') ta+=sys.angle;
+  }
+
+  let x=W*0.5-(minX+maxX)*0.5, y=H*0.5-(minY+maxY)*0.5, angle=-Math.PI*0.5;
+  let totalF=0; for (const ch of str) if(ch==='F') totalF++;
+  let segIdx=0;
+  const t0 = performance.now()*0.001;
+
+  for (const ch of str) {
+    if (ch==='F') {
+      const nx=x+Math.cos(angle)*segLen, ny=y+Math.sin(angle)*segLen;
+      const frac=segIdx/totalF;
+      const hue = p.h1+(p.h2-p.h1)*frac + S.mid*50 + t0*15;
+      const lit = p.lit+S.high*0.12;
+      ctx.strokeStyle=`hsl(${hue},${p.sat*100}%,${lit*100}%)`;
+      ctx.lineWidth = S.renderMode==='glow'?2.2:1.1;
+      if (S.renderMode==='glow') { ctx.shadowColor=`hsl(${hue},100%,65%)`; ctx.shadowBlur=5+S.energy*12; }
+      else { ctx.shadowBlur=0; }
+      ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(nx,ny); ctx.stroke();
+      x=nx; y=ny; segIdx++;
+    } else if (ch==='+') angle-=sys.angle;
+    else if (ch==='-') angle+=sys.angle;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Spectrum
+// ═══════════════════════════════════════════════════════════════
+const specCanvas = document.getElementById('spectrumCanvas');
+const specCtx = specCanvas.getContext('2d');
+
+function resizeSpec() {
+  const dpr = window.devicePixelRatio || 1;
+  specCanvas.width = specCanvas.offsetWidth*dpr;
+  specCanvas.height= specCanvas.offsetHeight*dpr;
+}
+setTimeout(resizeSpec,100);
+window.addEventListener('resize', resizeSpec);
+
+function drawSpectrum() {
+  if (!S.analyser) return;
+  S.analyser.getByteFrequencyData(S.dataArray);
+  const w=specCanvas.width, h=specCanvas.height;
+  specCtx.clearRect(0,0,w,h);
+  const d=S.dataArray, barW=w/d.length, p=PAL[S.palette];
+  for (let i=0; i<d.length; i++) {
+    const v=d[i]/255, barH=v*h;
+    const hue = p.h1+(p.h2-p.h1)*(i/d.length);
+    specCtx.fillStyle=`hsl(${hue},${p.sat*100}%,${p.lit*100+v*14}%)`;
+    specCtx.fillRect(i*barW, h-barH, barW*0.82, barH);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Audio engine
+// ═══════════════════════════════════════════════════════════════
+class Voice {
+  constructor(ctx, freq, gainVal, depth, maxDepth) {
+    this.osc = ctx.createOscillator();
+    this.osc.type='sine';
+    this.osc.frequency.value=freq;
+    this.gain=ctx.createGain();
+    this.gain.gain.value=gainVal;
+    this.osc.connect(this.gain);
+    this.gain.connect(ctx.destination);
+    this.osc.start();
+    const now=ctx.currentTime;
+    this.gain.gain.setTargetAtTime(0, now+1.5, 0.6);
+    this.osc.stop(now+3);
+
+    if (depth<maxDepth && Math.random()<0.4) {
+      const delay=400+Math.random()*800;
+      setTimeout(() => { new Voice(ctx,freq*2,gainVal*0.5,depth+1,maxDepth); spawnWave(depth+1); }, delay);
+    }
+  }
+}
+
+function initAudioCtx() {
+  if (S.audioCtx) return;
+  S.audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+  S.analyser = S.audioCtx.createAnalyser();
+  S.analyser.fftSize=512;
+  S.dataArray = new Uint8Array(S.analyser.frequencyBinCount);
+  S.analyser.connect(S.audioCtx.destination);
+
+  S.baseOsc = S.audioCtx.createOscillator();
+  S.baseOsc.type='sine';
+  S.filter = S.audioCtx.createBiquadFilter();
+  S.filter.type='lowpass';
+  S.baseGain = S.audioCtx.createGain();
+  S.baseGain.gain.value=0.12;
+
+  S.baseOsc.connect(S.filter);
+  S.filter.connect(S.baseGain);
+  S.baseGain.connect(S.analyser);
+
+  S.baseOsc.start();
+  S.audioCtx.suspend();
+}
+
+function startGenerative() {
+  initAudioCtx();
+  if (S.audioCtx.state==='suspended') S.audioCtx.resume();
+  S.genEnabled=true;
+  document.getElementById('btnJam').classList.add('active');
+  document.getElementById('btnJam').textContent='🔇';
+}
+function stopGenerative() {
+  S.genEnabled=false;
+  if (S.audioCtx) S.audioCtx.suspend();
+  document.getElementById('btnJam').classList.remove('active');
+  document.getElementById('btnJam').textContent='🔊';
+}
+
+function readMetrics() {
+  if (!S.analyser) return {energy:0,peak:0};
+  S.analyser.getByteFrequencyData(S.dataArray);
+  let sum=0,pk=0;
+  for (let i=0; i<S.dataArray.length; i++) { const v=S.dataArray[i]/255; sum+=v; if(v>pk)pk=v; }
+  return {energy:sum/S.dataArray.length, peak:pk};
+}
+
+function readBands() {
+  if (!S.analyser) return;
+  S.analyser.getByteFrequencyData(S.dataArray);
+  const d=S.dataArray, len=d.length;
+  const bEnd=Math.floor(len*0.12), mEnd=Math.floor(len*0.45);
+  let b=0,m=0,h=0;
+  for (let i=0;i<bEnd;i++) b+=d[i];
+  for (let i=bEnd;i<mEnd;i++) m+=d[i];
+  for (let i=mEnd;i<len;i++) h+=d[i];
+  b/=(bEnd*255); m/=((mEnd-bEnd)*255); h/=((len-mEnd)*255);
+  S.bass=S.bass*0.72+b*0.28;
+  S.mid =S.mid *0.72+m*0.28;
+  S.high=S.high*0.72+h*0.28;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CPU fractal field
+// ═══════════════════════════════════════════════════════════════
+function iterateCPU(cx,cy,type,maxIter) {
+  let x=0,y=0;
+  if (type==='julia') { x=cx; y=cy; cx=S.juliaCX; cy=S.juliaCY; }
+  let iter=0;
+  while (x*x+y*y<=4 && iter<maxIter) {
+    const xt=x*x-y*y+cx;
+    y = (type==='tricorn')?-(2*x*y)+cy : 2*x*y+cy;
+    x=xt;
+    iter++;
+  }
+  return iter;
+}
+
+function generateField(t) {
+  const type=S.fractal;
+  const baseScale=2.5;
+  const zoom=0.75+0.25*Math.sin(t*0.15);
+  const scale=baseScale*zoom/S.userZoom;
+  const cx0=-0.5+Math.sin(t*0.17)*0.25 + S.userPanX;
+  const cy0=Math.cos(t*0.13)*0.18 - S.userPanY;
+
+  // Julia c: time-based drift (used when mouse hasn't overridden)
+  if (!S.juliaMouseOverride) {
+    S.juliaCX = -0.7 + Math.sin(t*0.3)*0.2;
+    S.juliaCY = 0.27 + Math.cos(t*0.21)*0.2;
+  }
+
+  let sum=0,max=0,idx=0;
+  for (let iy=0; iy<S.fieldH; iy++) {
+    for (let ix=0; ix<S.fieldW; ix++) {
+      const px=cx0+(ix/S.fieldW-0.5)*scale;
+      const py=cy0+(iy/S.fieldH-0.5)*scale;
+      const v=iterateCPU(px,py,type,200);
+      S.field[idx++]=v;
+      sum+=v; if(v>max)max=v;
+    }
+  }
+  return {mean:sum/(S.fieldW*S.fieldH), peak:max};
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Main loop
+// ═══════════════════════════════════════════════════════════════
+function clamp(v,lo,hi){return Math.min(hi,Math.max(lo,v));}
+
+function mainLoop(now) {
+  requestAnimationFrame(mainLoop);
+  if (S.lastT) S.fps=Math.round(1000/(now-S.lastT));
+  S.lastT=now;
+
+  const t = (now-S.startTime)/1000;
+
+  readBands();
+
+  const isWebGL = (S.fractal!=='tree' && S.fractal!=='lsystem');
+  glCanvas.style.display = isWebGL?'block':'none';
+  overlay.style.display = 'block';
+  treeCanvas.style.display = isWebGL?'none':'block';
+
+  if (isWebGL) {
+    const baseScale=2.5;
+    const zoom=0.75+0.25*Math.sin(t*0.15);
+    let scale=baseScale*zoom;
+    let centerX=-0.5+Math.sin(t*0.17)*0.25;
+    let centerY=Math.cos(t*0.13)*0.18;
+
+    scale/=S.userZoom;
+    centerX+=S.userPanX;
+    centerY-=S.userPanY;
+
+    // NEW: reactivity toggle gates all audio effects
+    if (S.reactive) {
+      scale*=(1-S.bass*0.12);
+    }
+
+    gl.uniform2f(U['u_resolution'], glCanvas.width, glCanvas.height);
+    gl.uniform1f(U['u_time'], t);
+    gl.uniform1f(U['u_scale'], scale);
+    gl.uniform2f(U['u_center'], centerX, centerY);
+
+    const typeMap={mandelbrot:0,julia:1,tricorn:3};
+    gl.uniform1i(U['u_type'], typeMap[S.fractal]||0);
+    gl.uniform2f(U['u_juliaC'], S.juliaCX, S.juliaCY);
+
+    // NEW: if reactivity off, pass 0 for energy/peak
+    gl.uniform1f(U['u_energy'], S.reactive ? S.energy : 0);
+    gl.uniform1f(U['u_peak'],   S.reactive ? S.peak   : 0);
+
+    const modeMap={classic:0,inverse:1,glow:2};
+    gl.uniform1i(U['u_mode'], modeMap[S.renderMode]||0);
+
+    const p=PAL[S.palette];
+    gl.uniform1f(U['u_h1'], p.h1);
+    gl.uniform1f(U['u_h2'], p.h2);
+    gl.uniform1f(U['u_sat'],p.sat);
+    gl.uniform1f(U['u_lit'],p.lit);
+
+    gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+  } else {
+    drawTreeFrame();
+  }
+
+  drawOverlay();
+  drawSpectrum();
+
+  // audio feedback loop
+  if (S.genEnabled && S.audioCtx) {
+    const metrics = readMetrics();
+    const fracMetrics = generateField(t);
+
+    const isJulia = (S.fractal==='julia');
+    let mean = metrics.energy*60 + fracMetrics.mean*(isJulia?0.03:0.015);
+    let peak = metrics.peak *40 + fracMetrics.peak *(isJulia?0.04:0.02);
+    mean=clamp(mean,20,120);
+    peak=clamp(peak,10,80);
+
+    const now_s=S.audioCtx.currentTime;
+    const baseFreq=90+mean*3;
+    S.baseOsc.frequency.setTargetAtTime(baseFreq,now_s,0.2);
+    S.filter.frequency.setTargetAtTime(200+peak*12,now_s,0.6);
+
+    const spawnInt = peak>0.25?1.6:peak>0.15?2.0:2.6;
+    if (now_s-S.lastSpawn>spawnInt) {
+      S.lastSpawn=now_s;
+      new Voice(S.audioCtx,baseFreq*1.5,0.08,1,3);
+      spawnWave(1);
+    }
+
+    S.energy+=(metrics.energy-S.energy)*0.12;
+    S.peak  +=(metrics.peak  -S.peak  )*0.08;
+  } else if (S.analyser) {
+    const m=readMetrics();
+    S.energy+=(m.energy-S.energy)*0.12;
+    S.peak  +=(m.peak  -S.peak  )*0.08;
+  }
+
+  document.getElementById('stats').innerHTML =
+    `FPS ${S.fps} &nbsp; E ${S.energy.toFixed(2)} &nbsp; P ${S.peak.toFixed(2)}` +
+    (S.fractal==='lsystem'?` &nbsp; ${LSYS[S.lsysRule].name}`:'');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// UI wiring
+// ═══════════════════════════════════════════════════════════════
+function showHint(id,show) {
+  const el=document.getElementById(id);
+  el.classList.toggle('show',show);
+  if (show) setTimeout(()=>el.classList.remove('show'),4000);
+}
+
+document.getElementById('fractalSelect').addEventListener('change',function(){
+  S.fractal=this.value;
+  S.userZoom=1; S.userPanX=0; S.userPanY=0;
+  S.juliaMouseOverride=false;  // reset on fractal change
+  if (this.value==='lsystem') { S.lsysRule=0; S.lsysStepOverride=-1; }
+  showHint('hintJulia', this.value==='julia');
+  showHint('hintLsys',  this.value==='lsystem');
+});
+
+document.querySelectorAll('.pill').forEach(btn=>{
+  btn.addEventListener('click',function(){
+    document.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
+    this.classList.add('active');
+    S.renderMode=this.dataset.mode;
+  });
+});
+
+document.querySelectorAll('.swatch').forEach(sw=>{
+  sw.addEventListener('click',function(){
+    document.querySelectorAll('.swatch').forEach(s=>s.classList.remove('active'));
+    this.classList.add('active');
+    S.palette=this.dataset.p;
+  });
+});
+
+document.getElementById('btnJam').addEventListener('click',function(){
+  if (S.genEnabled) stopGenerative(); else startGenerative();
+});
+
+// File upload: optional overlay audio
+document.getElementById('btnUpload').addEventListener('click',()=>document.getElementById('fileInput').click());
+document.getElementById('fileInput').addEventListener('change',function(e){
+  const file=e.target.files[0];
+  if (!file) return;
+  initAudioCtx();
+  if (S.audioCtx.state==='suspended') S.audioCtx.resume();
+  const reader=new FileReader();
+  reader.onload=function(ev){
+    S.audioCtx.decodeAudioData(ev.target.result,function(buf){
+      if (S.fileSource) { try{S.fileSource.stop();}catch(e2){} }
+      S.fileBuffer=buf;
+      S.fileSource=S.audioCtx.createBufferSource();
+      S.fileSource.buffer=S.fileBuffer;
+      S.fileSource.connect(S.analyser);
+      S.fileSource.start(0);
+      document.getElementById('btnUpload').classList.add('active');
+      S.fileSource.onended=()=>document.getElementById('btnUpload').classList.remove('active');
+    });
+  };
+  reader.readAsArrayBuffer(file);
+});
+
+// NEW: reactivity toggle gates ALL audio influence (energy/peak sent to shader as 0 when off)
+document.getElementById('btnReactive').addEventListener('click',function(){
+  S.reactive=!S.reactive;
+  this.classList.toggle('active',S.reactive);
+});
+
+// FIXED: fullscreen with all prefixes
+document.getElementById('btnFullscreen').addEventListener('click',()=>{
+  const elem=document.documentElement;
+  if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.mozFullScreenElement) {
+    if (elem.requestFullscreen) elem.requestFullscreen();
+    else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+    else if (elem.mozRequestFullScreen) elem.mozRequestFullScreen();
+    else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
+  } else {
+    if (document.exitFullscreen) document.exitFullscreen();
+    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
+    else if (document.msExitFullscreen) document.msExitFullscreen();
+  }
+});
+
+// FIXED: screenshot composite
+document.getElementById('btnCapture').addEventListener('click',()=>{
+  const w=window.innerWidth, h=window.innerHeight;
+  const tmp=document.createElement('canvas');
+  tmp.width=w; tmp.height=h;
+  const ctx=tmp.getContext('2d');
+  
+  // draw appropriate source canvas
+  if (S.fractal==='tree'||S.fractal==='lsystem') {
+    ctx.drawImage(treeCanvas,0,0,w,h);
+  } else {
+    ctx.drawImage(glCanvas,0,0,w,h);
+  }
+  // overlay waves on top
+  ctx.drawImage(overlay,0,0,w,h);
+  
+  // trigger download
+  tmp.toBlob(function(blob){
+    const url=URL.createObjectURL(blob);
+    const link=document.createElement('a');
+    link.download='recursive-resonance-'+Date.now()+'.png';
+    link.href=url;
+    link.click();
+    URL.revokeObjectURL(url);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Mouse / touch interaction
+// ═══════════════════════════════════════════════════════════════
+
+// Julia: mouse morphs c (also sets flag so time-based drift stops)
+glCanvas.addEventListener('mousemove',function(e){
+  if (S.fractal!=='julia') return;
+  S.juliaMouseOverride=true;
+  const rect=glCanvas.getBoundingClientRect();
+  S.juliaCX = ((e.clientX-rect.left)/rect.width -0.5)*3.0;
+  S.juliaCY = ((e.clientY-rect.top )/rect.height-0.5)*3.0;
+});
+
+// L-System: mouse X controls step count
+treeCanvas.addEventListener('mousemove',function(e){
+  if (S.fractal!=='lsystem') return;
+  const sys=LSYS[S.lsysRule];
+  const rect=treeCanvas.getBoundingClientRect();
+  const frac=(e.clientX-rect.left)/rect.width;
+  S.lsysStepOverride = Math.floor(2 + frac*(sys.maxSteps-2));
+});
+treeCanvas.addEventListener('mouseleave',function(){
+  if (S.fractal==='lsystem') S.lsysStepOverride=-1; // resume animation
+});
+
+// Scroll zoom
+glCanvas.addEventListener('wheel',function(e){
+  e.preventDefault();
+  S.userZoom *= (e.deltaY>0)?1.12:0.89;
+  S.userZoom = Math.max(0.01,Math.min(1e10,S.userZoom));
+},{passive:false});
+
+// Drag pan
+let dragging=false, lastMouse={x:0,y:0};
+glCanvas.addEventListener('mousedown',function(e){
+  if (S.fractal!=='julia') { dragging=true; lastMouse={x:e.clientX,y:e.clientY}; }
+});
+window.addEventListener('mouseup',()=>dragging=false);
+window.addEventListener('mousemove',function(e){
+  if (!dragging||S.fractal==='julia') return;
+  const dx=(e.clientX-lastMouse.x)/window.innerWidth;
+  const dy=(e.clientY-lastMouse.y)/window.innerHeight;
+  S.userPanX -= dx*2.5/S.userZoom;
+  S.userPanY += dy*2.5/S.userZoom;
+  lastMouse={x:e.clientX,y:e.clientY};
+});
+
+// Touch
+let pinchDist=null;
+glCanvas.addEventListener('touchstart',function(e){
+  e.preventDefault();
+  if (e.touches.length===1) { dragging=true; lastMouse={x:e.touches[0].clientX,y:e.touches[0].clientY}; }
+  if (e.touches.length===2) pinchDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+},{passive:false});
+glCanvas.addEventListener('touchmove',function(e){
+  e.preventDefault();
+  if (e.touches.length===1&&dragging) {
+    if (S.fractal==='julia') {
+      S.juliaMouseOverride=true;
+      S.juliaCX=(e.touches[0].clientX/window.innerWidth -0.5)*3.0;
+      S.juliaCY=(e.touches[0].clientY/window.innerHeight-0.5)*3.0;
+    } else {
+      const dx=(e.touches[0].clientX-lastMouse.x)/window.innerWidth;
+      const dy=(e.touches[0].clientY-lastMouse.y)/window.innerHeight;
+      S.userPanX-=dx*2.5/S.userZoom;
+      S.userPanY+=dy*2.5/S.userZoom;
+    }
+    lastMouse={x:e.touches[0].clientX,y:e.touches[0].clientY};
+  }
+  if (e.touches.length===2) {
+    const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+    if (pinchDist) { S.userZoom*=d/pinchDist; S.userZoom=Math.max(0.01,Math.min(1e10,S.userZoom)); }
+    pinchDist=d;
+  }
+},{passive:false});
+glCanvas.addEventListener('touchend',function(e){
+  e.preventDefault();
+  dragging=false;
+  pinchDist=null;
+},{passive:false});
+
+// L-system: click cycles rule
+treeCanvas.addEventListener('click',function(){
+  if (S.fractal==='lsystem') {
+    S.lsysRule=(S.lsysRule+1)%LSYS.length;
+    S.lsysStepOverride=-1; // reset to animation
+  }
+});
+
+requestAnimationFrame(mainLoop);
+
+})();
+</script>
 </body>
 </html>

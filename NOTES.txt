@@ -1,3 +1,9 @@
+Can we try some other fractal types?
+Mandelbrot
+Julia
+Recursive trees
+etc?
+
 🌳 Recursive visuals matching sound
 
 🎛️ Order ↔ Chaos control (recursion depth & probability)

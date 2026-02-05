@@ -1,6 +1,11 @@
 import { FractalEngine } from "./fractalEngine.js";
 import { AudioEngine } from "./audioEngine.js";
-import { setAudioMetrics } from "./webglFractal.js";
+import {
+  setAudioMetrics,
+  setFractalType,
+  setJuliaParams
+} from "./webglFractal.js";
+
 
 /*
 function hsvToRgb(h, s, v) {
@@ -39,6 +44,7 @@ overlayCtx = overlay.getContext("2d");
 let audioEnabled = false;
 
 
+
 function clamp(v, lo, hi) {
   return Math.min(hi, Math.max(lo, v));
 }
@@ -64,6 +70,24 @@ function init() {
   width: 120,
   height: 80
   });
+
+  const fractalSelect = document.getElementById("fractalType");
+  fractalSelect.addEventListener("change", e => {
+  fractal.type = e.target.value;
+
+
+
+  const map = {
+  mandelbrot: 0,
+  julia: 1,
+  burningship: 2
+  };
+
+  setFractalType(map[fractal.type]);
+  });
+
+
+
 
   
 
@@ -153,7 +177,7 @@ function init() {
   if (audioTimer) clearInterval(audioTimer);
   audioTimer = setInterval(() => {
 
-
+    const isJulia = fractal.type === "julia";
     //audio.update({ mean: 50, peak: 30 }); // placeholder for now
 
     // --- 1. Read real audio ---
@@ -162,16 +186,19 @@ function init() {
     // --- 2. Feed audio → fractal ---
     const t = performance.now() * 0.001;
     fractal.step(t);
+    setJuliaParams(fractal.juliaCX, fractal.juliaCY);
+
     const fractalMetrics = fractal.getMetrics();
 
     // --- 3. Blend both worlds (slow feedback) ---
     let mean =
       audioMetrics.energy * 60 +
-      fractalMetrics.mean * 0.015;
+      fractalMetrics.mean * (isJulia ? 0.03 : 0.015);
 
-  let peak =
-    audioMetrics.peak * 40 +
-    fractalMetrics.peak * 0.02;
+    let peak =
+      audioMetrics.peak * 40 +
+      fractalMetrics.peak * (isJulia ? 0.04 : 0.02);
+
 
   mean = clamp(mean, 20, 120);
   peak = clamp(peak, 10, 80);

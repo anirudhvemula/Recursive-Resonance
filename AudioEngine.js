@@ -107,10 +107,16 @@ spawnVoice(freq, gain, depth) {
 
 
     // Spawn recursion every few seconds
-    if (now - this.lastSpawn > 2.5) {
+    const spawnInterval =
+      peak > 0.25 ? 1.6 :
+      peak > 0.15 ? 2.0 :
+                    2.6;
+
+    if (now - this.lastSpawn > spawnInterval) {
       this.lastSpawn = now;
       this.spawnVoice(baseFreq * 1.5, 0.08, 1);
     }
+
   }
 
   getAudioMetrics() {
